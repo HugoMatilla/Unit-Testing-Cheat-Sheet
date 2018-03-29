@@ -1,7 +1,6 @@
-# TOC
-<!-- TOC -->
+WORKING EFFECTIVELY WITH UNIT TESTS
 
-- [TOC](#toc)
+<!-- TOC -->
 - [Types of tests](#types-of-tests)
   - [State Verification](#state-verification)
   - [Behavior Verification](#behavior-verification)
@@ -13,6 +12,13 @@
   - [Expect Literals](#expect-literals)
   - [Negative Testing](#negative-testing)
 - [Improving Test Cases](#improving-test-cases)
+  - [Too Much Magic](#too-much-magic)
+  - [Inline Setup](#inline-setup)
+  - [Test Names](#test-names)
+- [Improving Test Suites](#improving-test-suites)
+  - [Separating The Solitary From The Sociable](#separating-the-solitary-from-the-sociable)
+  - [Questionable Tests](#questionable-tests)
+  - [Custom Assertions](#custom-assertions)
 
 <!-- /TOC -->
 # Types of tests
@@ -244,9 +250,110 @@ An effective test suite implies maintainable test cases.
 
 Tests are procedural by nature.
 
-* The primary motivation for naming a test method is
-documentation; calling a test method explicitly is an
-anti-pattern.
+* The primary motivation for naming a test method is documentation
 * Instance method collaboration is considered an antipattern.
-* Each instance method is magically given its own set of
-instance variables
+* Each instance method is magically given its own set of instance variables
+* Each test method should encapsulate the entire lifecycle and verification, independent of other test methods.
+* Tests methods should have very specific goals which can be easily identified by maintainers.
+
+## Too Much Magic
+Remove complex code when implementing tests. They should be simple and straightforward to understand.
+
+## Inline Setup
+If you aspire to create tiny universes with minimal conceptual
+overhead, rarely will you find the opportunity to use Setup( `@Before` ).
+
+### Similar Creation and Action
+Reduce creation duplication by introducing globally used builders.
+
+Duplicate code is a smell. Setup and Teardown are deodorant.
+
+### Setup As An Optimization
+Creating a database connection per Sociable Unit Test would be slower than creating one in each test within a single Test Case.
+> Why are we creating more than one database connection at all? 
+
+> Why not create one global connection and run each test in a transaction that’s automatically rolled back
+after each Sociable Unit Test?
+
+Answer yourself these questions
+
+* Are all the Sociable Unit Tests still necessary?
+* Are the interactions with the File System, Database,
+and/or Messaging System still necessary?
+* Is there a faster way to accomplish any of the tasks
+setting the File System, Database and/or Messaging
+System back to a known state?
+
+## Test Names
+Test names are like comments. 
+> Code never lies, comments sometimes do
+
+# Improving Test Suites
+## Separating The Solitary From The Sociable
+1. Sociable Unit Tests can be slow and nondeterministic
+2. Sociable Unit Tests are more susceptible to cascading
+failures
+
+### Increasing Consistency And Speed With Solitary Unit Tests
+What affects the more in tests speed:
+* Interacting with a database
+* Interacting with the filesystem
+* Interacting with time
+
+#### Database and Filesystem Interaction
+Wrapping the commonly used libraries with a gateway that provides the following capabilities:
+
+* The ability to disallow access within Solitary Unit Tests
+* The ability to reset to a base state before each Sociable
+Unit Test.
+
+```java
+public class FileWriterGateway extends FileWriter {
+  public static boolean disallowAccess = false;
+  public FileWriterGateway(String filename) throws IOException {
+    super(filename);
+    if (disallowAccess) throw new RuntimeException("access disallowed");
+  }
+}
+```
+
+```java
+public class Solitary {
+  @Before
+  public void setup() {
+    FileWriterGateway.disallowAccess = true;
+  }
+}
+```
+
+```java
+public class PidWriterTest extends Solitary {
+@Test
+  public void writePid() throws Exception {
+    RuntimeMXBean bean = mock(RuntimeMXBean.class);
+    when(bean.getName()).thenReturn("12@X");
+    FileWriterGateway facade = mock(FileWriterGateway.class);
+    PidWriter.writePid(facade, bean);
+    verify(facade).write("12");
+  }
+}
+```
+
+### Using Speed To Your Advantage
+Convert a Sociable Unit Tests to a Solitary Unit Tests provides approximately the same ROI.
+
+>Faster feedback of equal quality.
+
+Always run all of the Solitary Unit Tests first, and run the Sociable Unit Tests if and only if all of the Solitary Unit Tests pass.
+
+### Avoiding Cascading Failures With Solitary Unit Tests
+1. Sociable Unit Tests are more susceptible to cascading failures
+2. Few things kill productivity and motivation faster than cascading test failures.
+
+## Questionable Tests
+
+* Don't Test Language Features or Standard Library Classes
+* Don't Test Framework Features or Classes
+* Don't Test Private Methods
+
+## Custom Assertions
