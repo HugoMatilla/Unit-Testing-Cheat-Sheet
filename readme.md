@@ -19,6 +19,7 @@ WORKING EFFECTIVELY WITH UNIT TESTS
   - [Separating The Solitary From The Sociable](#separating-the-solitary-from-the-sociable)
   - [Questionable Tests](#questionable-tests)
   - [Custom Assertions](#custom-assertions)
+  - [Global Definition](#global-definition)
 
 <!-- /TOC -->
 # Types of tests
@@ -357,3 +358,55 @@ Always run all of the Solitary Unit Tests first, and run the Sociable Unit Tests
 * Don't Test Private Methods
 
 ## Custom Assertions
+T ake assert structural duplication and replace it with a concise, globally useful single assertion.
+
+> **Structural Duplication**: The overall pattern of the code is the same, but the details differ.
+
+```java
+@Test
+public void invalidTitleCustomAssertion() {
+  assertThrows(
+    IllegalArgumentException.class,
+    () -> a.movie.w(UNKNOWN).build());
+  }
+```
+
+### Custom Assertions on Value Objects
+Make them if there are several assertions that focused on a non Literal type like date.
+
+```java 
+public static void assertDateWithFormat(String expected, 
+                                        String format, 
+                                        Date date ){
+  assertEquals(expected, new SimpleDateFormat(format).format(date));
+}
+```
+## Global Definition
+> If you find yourself repeating the same idea in
+multiple test cases, look for a higher level concept that can
+be extracted and reused.
+
+### Object Mother
+An object with a fixture of the data used for a test.
+
+**CONS**: As the project grows the coupling between the tests and the objects grows bigger and errors start to appear.
+
+### Test Data Builders
+
+For each class you want to use in a test, create a
+Builder for that class that:
+* Has an instance variable for each constructor parameter
+* Initializes its instance variables to commonly used or safe values
+* Has a build method that creates a new object using the values in its instance variables
+* Has “chainable” public methods for overriding the values in its instance variables.
+
+**PROS**: Data Builders provide you the benefits of creating an object with sensible defaults, and provide methods for adding your
+test specific data - thus keeping your tests decoupled.
+
+### Test Data Builder Syntax
+Choose one an use the same always.
+
+1.  `anOrder().from(aCustomer().with(...)).build();`
+2.  `a.order.w(a.customer.w(...)).build();`
+3.  `build(order.w(customer.w(...)));`
+
