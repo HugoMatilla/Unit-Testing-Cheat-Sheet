@@ -410,3 +410,10 @@ Choose one an use the same always.
 2.  `a.order.w(a.customer.w(...)).build();`
 3.  `build(order.w(customer.w(...)));`
 
+### Creating Stubs
+
+#### Create, Stub, Return
+
+1. Create a stub.
+2. Stub the result of a single method call.
+3. Pass the stub to another method.
